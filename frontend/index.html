@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ReliefNet — Disaster Relief Coordination</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --red: #e63946;
+    --orange: #f4a261;
+    --bg: #0a0c10;
+    --bg2: #12151c;
+    --bg3: #1a1e28;
+    --border: #272c3a;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --yellow: #fbbf24;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+  header {
+    background: linear-gradient(135deg, #0a0c10 0%, #1a0408 50%, #0a0c10 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    position: sticky; top:0; z-index:100;
+    display:flex; align-items:center; justify-content:space-between; height:64px;
+  }
+  .logo { display:flex; align-items:center; gap:.75rem; }
+  .logo-icon { width:36px; height:36px; background:var(--red); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(230,57,70,.4); } 50%{ box-shadow:0 0 0 8px rgba(230,57,70,0); } }
+  .logo h1 { font-family:'Bebas Neue'; font-size:1.8rem; letter-spacing:2px; color:var(--text); }
+  .logo span { color:var(--red); }
+  .status-bar { display:flex; gap:1rem; align-items:center; }
+  .status-pill { font-family:'JetBrains Mono'; font-size:.7rem; padding:.3rem .7rem; border-radius:20px; border:1px solid; }
+  .status-active { color:var(--green); border-color:var(--green); background:rgba(34,197,94,.08); }
+  .status-alert  { color:var(--red);   border-color:var(--red);   background:rgba(230,57,70,.08); animation:blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  .container { display:flex; height:calc(100vh - 64px); }
+  nav { width:220px; min-width:220px; background:var(--bg2); border-right:1px solid var(--border); padding:1.5rem 0; display:flex; flex-direction:column; gap:.25rem; }
+  nav .section-label { font-family:'JetBrains Mono'; font-size:.6rem; color:var(--muted); letter-spacing:2px; padding:.5rem 1.5rem .25rem; text-transform:uppercase; }
+  nav button { background:none; border:none; color:var(--muted); font-family:'DM Sans'; font-size:.875rem; padding:.6rem 1.5rem; text-align:left; cursor:pointer; display:flex; align-items:center; gap:.6rem; border-left:2px solid transparent; transition:all .2s; }
+  nav button:hover { color:var(--text); background:rgba(255,255,255,.04); }
+  nav button.active { color:var(--red); border-left-color:var(--red); background:rgba(230,57,70,.06); font-weight:600; }
+  nav .icon { font-size:1rem; }
+
+  main { flex:1; overflow-y:auto; padding:2rem; }
+
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .panel-header { margin-bottom:1.5rem; }
+  .panel-header h2 { font-family:'Bebas Neue'; font-size:2rem; letter-spacing:1px; color:var(--text); }
+  .panel-header p { color:var(--muted); font-size:.875rem; margin-top:.25rem; }
+
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:2rem; }
+  .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:1.25rem; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .stat-card.red::before { background:var(--red); }
+  .stat-card.orange::before { background:var(--orange); }
+  .stat-card.green::before { background:var(--green); }
+  .stat-card.blue::before { background:var(--blue); }
+  .stat-card.yellow::before { background:var(--yellow); }
+  .stat-card .s-val { font-family:'Bebas Neue'; font-size:2.2rem; line-height:1; }
+  .stat-card .s-label { font-size:.75rem; color:var(--muted); margin-top:.25rem; font-family:'JetBrains Mono'; }
+
+  .card { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:1.5rem; margin-bottom:1.5rem; }
+  .card h3 { font-family:'Bebas Neue'; font-size:1.2rem; letter-spacing:1px; margin-bottom:1rem; color:var(--orange); }
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.75rem; }
+  .form-group { display:flex; flex-direction:column; gap:.35rem; }
+  .form-group label { font-size:.75rem; color:var(--muted); font-family:'JetBrains Mono'; letter-spacing:.5px; }
+  input, select, textarea {
+    background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:.55rem .75rem; font-family:'DM Sans'; font-size:.875rem;
+    outline:none; transition:border .2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color:var(--red); }
+  textarea { resize:vertical; min-height:70px; }
+  select option { background:var(--bg3); }
+  .btn { padding:.6rem 1.4rem; border-radius:8px; border:none; font-family:'DM Sans'; font-size:.875rem; font-weight:600; cursor:pointer; transition:all .2s; }
+  .btn-primary { background:var(--red); color:#fff; }
+  .btn-primary:hover { background:#c62d39; transform:translateY(-1px); }
+  .btn-secondary { background:var(--bg3); color:var(--text); border:1px solid var(--border); }
+  .btn-secondary:hover { border-color:var(--muted); }
+  .btn-sm { padding:.35rem .9rem; font-size:.8rem; }
+  .btn-danger { background:rgba(230,57,70,.15); color:var(--red); border:1px solid rgba(230,57,70,.3); }
+  .btn-danger:hover { background:rgba(230,57,70,.25); }
+
+  .table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
+  table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  thead { background:var(--bg3); }
+  th { padding:.7rem 1rem; text-align:left; font-family:'JetBrains Mono'; font-size:.7rem; color:var(--muted); letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid var(--border); }
+  td { padding:.7rem 1rem; border-bottom:1px solid rgba(255,255,255,.03); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,.02); }
+  .badge { display:inline-block; padding:.2rem .6rem; border-radius:20px; font-size:.7rem; font-weight:600; font-family:'JetBrains Mono'; }
+  .badge-red    { background:rgba(230,57,70,.15);  color:var(--red); }
+  .badge-green  { background:rgba(34,197,94,.15);  color:var(--green); }
+  .badge-yellow { background:rgba(251,191,36,.15); color:var(--yellow); }
+  .badge-blue   { background:rgba(59,130,246,.15); color:var(--blue); }
+  .badge-orange { background:rgba(244,162,97,.15); color:var(--orange); }
+
+  .sql-term { background:#050709; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .sql-term-header { background:var(--bg3); padding:.7rem 1rem; display:flex; align-items:center; gap:.5rem; border-bottom:1px solid var(--border); }
+  .dot { width:10px; height:10px; border-radius:50%; }
+  .dot-red{background:#e63946;} .dot-yellow{background:#fbbf24;} .dot-green{background:#22c55e;}
+  .sql-term-header span { font-family:'JetBrains Mono'; font-size:.75rem; color:var(--muted); margin-left:.5rem; }
+  textarea.sql-input { width:100%; background:#050709; border:none; border-bottom:1px solid var(--border); color:#7ee787; font-family:'JetBrains Mono'; font-size:.85rem; padding:1rem; min-height:90px; resize:vertical; outline:none; }
+  .sql-output { min-height:100px; max-height:320px; overflow:auto; padding:1rem; font-family:'JetBrains Mono'; font-size:.8rem; }
+  .sql-output .ok { color:var(--green); }
+  .sql-output .err { color:var(--red); }
+  .sql-output table { color:var(--text); font-size:.78rem; }
+  .sql-output th { color:var(--orange); }
+
+  .alert-feed { display:flex; flex-direction:column; gap:.5rem; }
+  .alert-item { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:.75rem 1rem; display:flex; gap:.75rem; align-items:flex-start; border-left:3px solid; }
+  .alert-item.critical { border-left-color:var(--red); }
+  .alert-item.warning  { border-left-color:var(--yellow); }
+  .alert-item.info     { border-left-color:var(--blue); }
+  .alert-meta { flex:1; }
+  .alert-title { font-weight:600; font-size:.875rem; }
+  .alert-time  { font-family:'JetBrains Mono'; font-size:.7rem; color:var(--muted); margin-top:.2rem; }
+
+  .map-box { background:var(--bg3); border:1px solid var(--border); border-radius:12px; height:220px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.5rem; color:var(--muted); margin-bottom:1.5rem; position:relative; overflow:hidden; }
+  .map-box::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse at 30% 60%, rgba(230,57,70,.07) 0%, transparent 60%), radial-gradient(ellipse at 70% 40%, rgba(59,130,246,.07) 0%, transparent 60%); }
+  .map-dots { position:absolute; inset:0; }
+  .map-dot { position:absolute; width:8px; height:8px; border-radius:50%; animation:ping 2s infinite; }
+  @keyframes ping { 0%{transform:scale(1);opacity:1} 75%{transform:scale(2.5);opacity:0} 100%{transform:scale(1);opacity:0} }
+
+  .schema-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; }
+  .schema-table { background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .schema-table-header { background:var(--bg3); padding:.6rem 1rem; display:flex; align-items:center; gap:.5rem; border-bottom:1px solid var(--border); }
+  .schema-table-header .t-name { font-family:'Bebas Neue'; font-size:1.1rem; letter-spacing:1px; }
+  .schema-col { display:flex; gap:.5rem; padding:.4rem 1rem; align-items:center; border-bottom:1px solid rgba(255,255,255,.03); font-size:.8rem; }
+  .schema-col:last-child { border-bottom:none; }
+  .col-name { font-family:'JetBrains Mono'; color:var(--text); flex:1; }
+  .col-type { font-family:'JetBrains Mono'; color:var(--muted); font-size:.7rem; }
+  .col-pk   { font-family:'JetBrains Mono'; color:var(--yellow); font-size:.65rem; background:rgba(251,191,36,.1); padding:.1rem .4rem; border-radius:4px; }
+  .col-fk   { font-family:'JetBrains Mono'; color:var(--blue); font-size:.65rem; background:rgba(59,130,246,.1); padding:.1rem .4rem; border-radius:4px; }
+  .col-nn   { font-family:'JetBrains Mono'; color:var(--orange); font-size:.65rem; }
+
+  .toast { position:fixed; bottom:1.5rem; right:1.5rem; background:var(--bg3); border:1px solid var(--green); color:var(--green); padding:.75rem 1.25rem; border-radius:10px; font-family:'JetBrains Mono'; font-size:.8rem; transform:translateY(100px); opacity:0; transition:all .3s; z-index:999; }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.err { border-color:var(--red); color:var(--red); }
+
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg2); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🚨</div>
+    <h1>Relief<span>Net</span></h1>
+  </div>
+  <div class="status-bar">
+    <div class="status-pill status-active">● DB ONLINE</div>
+    <div class="status-pill status-alert">⚠ ACTIVE DISASTERS</div>
+    <div class="status-pill" style="color:var(--muted);border-color:var(--muted);" id="clock"></div>
+  </div>
+</header>
+
+<div class="container">
+  <nav>
+    <div class="section-label">Command</div>
+    <button class="active" onclick="show('dashboard')" id="nav-dashboard"><span class="icon">📊</span>Dashboard</button>
+    <button onclick="show('disasters')" id="nav-disasters"><span class="icon">🌪</span>Disasters</button>
+    <button onclick="show('camps')" id="nav-camps"><span class="icon">⛺</span>Relief Camps</button>
+    <div class="section-label">People</div>
+    <button onclick="show('victims')" id="nav-victims"><span class="icon">🏥</span>Victims</button>
+    <button onclick="show('users')" id="nav-users"><span class="icon">👤</span>Users</button>
+    <div class="section-label">Logistics</div>
+    <button onclick="show('resources')" id="nav-resources"><span class="icon">📦</span>Resources</button>
+    <button onclick="show('donations')" id="nav-donations"><span class="icon">💰</span>Donations</button>
+    <div class="section-label">Database</div>
+    <button onclick="show('schema')" id="nav-schema"><span class="icon">🗄</span>Schema</button>
+    <button onclick="show('sql')" id="nav-sql"><span class="icon">⌨</span>SQL Terminal</button>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="panel-header">
+        <h2>Command Dashboard</h2>
+        <p>Real-time overview of all active relief operations</p>
+      </div>
+      <div class="stats" id="stats-grid"></div>
+      <div class="map-box">
+        <div class="map-dots" id="map-dots"></div>
+        <span style="font-size:2rem;position:relative">🗺</span>
+        <span style="position:relative;font-size:.875rem">Disaster Zone Map — Active Incidents</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="card">
+          <h3>🚨 Active Disasters</h3>
+          <div id="dash-disasters"></div>
+        </div>
+        <div class="card">
+          <h3>📢 Activity Feed</h3>
+          <div class="alert-feed" id="alert-feed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISASTERS -->
+    <div class="panel" id="panel-disasters">
+      <div class="panel-header"><h2>Disaster Management</h2><p>Track and manage active disaster events</p></div>
+      <div class="card">
+        <h3>➕ Register New Disaster</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Disaster Name</label><input id="d-name" placeholder="e.g. Kerala Floods 2025"/></div>
+          <div class="form-group"><label>Type</label>
+            <select id="d-type"><option>Flood</option><option>Earthquake</option><option>Cyclone</option><option>Landslide</option><option>Fire</option><option>Drought</option><option>Tsunami</option></select>
+          </div>
+          <div class="form-group"><label>Location</label><input id="d-loc" placeholder="District, State"/></div>
+          <div class="form-group"><label>Severity</label>
+            <select id="d-sev"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select>
+          </div>
+          <div class="form-group"><label>Start Date</label><input id="d-date" type="date"/></div>
+          <div class="form-group"><label>Status</label>
+            <select id="d-status"><option>Active</option><option>Contained</option><option>Resolved</option></select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:.75rem"><label>Description</label><textarea id="d-desc" placeholder="Brief description..."></textarea></div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="addDisaster()">Register Disaster</button>
+      </div>
+      <div class="card"><h3>📋 Disaster Registry</h3><div class="table-wrap"><table id="t-disasters"><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Location</th><th>Severity</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- CAMPS -->
+    <div class="panel" id="panel-camps">
+      <div class="panel-header"><h2>Relief Camps</h2><p>Manage shelter and relief camp operations</p></div>
+      <div class="card">
+        <h3>➕ Add Relief Camp</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Camp Name</label><input id="c-name" placeholder="Camp Alpha"/></div>
+          <div class="form-group"><label>Disaster</label><select id="c-disaster"></select></div>
+          <div class="form-group"><label>Location</label><input id="c-loc" placeholder="Address / Coordinates"/></div>
+          <div class="form-group"><label>Capacity</label><input id="c-cap" type="number" placeholder="500"/></div>
+          <div class="form-group"><label>Current Occupancy</label><input id="c-occ" type="number" placeholder="0"/></div>
+          <div class="form-group"><label>Camp Manager</label><input id="c-mgr" placeholder="Name"/></div>
+          <div class="form-group"><label>Contact</label><input id="c-contact" placeholder="+91 XXXXX XXXXX"/></div>
+          <div class="form-group"><label>Status</label><select id="c-status"><option>Active</option><option>Full</option><option>Inactive</option></select></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="addCamp()">Add Camp</button>
+      </div>
+      <div class="card"><h3>⛺ Camp Registry</h3><div class="table-wrap"><table id="t-camps"><thead><tr><th>ID</th><th>Name</th><th>Disaster</th><th>Location</th><th>Capacity</th><th>Occupancy</th><th>Manager</th><th>Status</th><th>Del</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- VICTIMS -->
+    <div class="panel" id="panel-victims">
+      <div class="panel-header"><h2>Victim Registry</h2><p>Register and track affected individuals</p></div>
+      <div class="card">
+        <h3>➕ Register Victim</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name</label><input id="v-name" placeholder="John Doe"/></div>
+          <div class="form-group"><label>Age</label><input id="v-age" type="number" placeholder="30"/></div>
+          <div class="form-group"><label>Gender</label><select id="v-gender"><option>Male</option><option>Female</option><option>Other</option></select></div>
+          <div class="form-group"><label>Contact Number</label><input id="v-contact" placeholder="+91 XXXXX XXXXX"/></div>
+          <div class="form-group"><label>Disaster</label><select id="v-disaster"></select></div>
+          <div class="form-group"><label>Camp Assigned</label><select id="v-camp"><option value="">None</option></select></div>
+          <div class="form-group"><label>Medical Condition</label><select id="v-medical"><option>None</option><option>Minor Injuries</option><option>Critical</option><option>Hospitalized</option></select></div>
+          <div class="form-group"><label>Status</label><select id="v-status"><option>Missing</option><option>Found</option><option>In Shelter</option><option>Hospitalized</option><option>Deceased</option></select></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="addVictim()">Register Victim</button>
+      </div>
+      <div class="card"><h3>🏥 Victim Records</h3><div class="table-wrap"><table id="t-victims"><thead><tr><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Disaster</th><th>Camp</th><th>Medical</th><th>Status</th><th>Del</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="panel" id="panel-users">
+      <div class="panel-header"><h2>User Management</h2><p>Manage system users and responders</p></div>
+      <div class="card">
+        <h3>➕ Add User</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name</label><input id="u-name" placeholder="Responder Name"/></div>
+          <div class="form-group"><label>Email</label><input id="u-email" type="email" placeholder="user@reliefnet.org"/></div>
+          <div class="form-group"><label>Phone</label><input id="u-phone" placeholder="+91 XXXXX XXXXX"/></div>
+          <div class="form-group"><label>Role</label><select id="u-role"><option>Coordinator</option><option>Volunteer</option><option>Medical Staff</option><option>Logistics</option><option>Admin</option><option>Observer</option></select></div>
+          <div class="form-group"><label>Organization</label><input id="u-org" placeholder="NDRF / Red Cross / etc."/></div>
+          <div class="form-group"><label>Status</label><select id="u-status"><option>Active</option><option>Inactive</option><option>On Field</option></select></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="addUser()">Add User</button>
+      </div>
+      <div class="card"><h3>👥 User Registry</h3><div class="table-wrap"><table id="t-users"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Organization</th><th>Status</th><th>Del</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- RESOURCES -->
+    <div class="panel" id="panel-resources">
+      <div class="panel-header"><h2>Resource Management</h2><p>Track and allocate relief resources</p></div>
+      <div class="card">
+        <h3>➕ Add Resource</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Resource Name</label><input id="r-name" placeholder="Food Packets"/></div>
+          <div class="form-group"><label>Category</label><select id="r-cat"><option>Food</option><option>Water</option><option>Medicine</option><option>Clothing</option><option>Shelter</option><option>Equipment</option><option>Vehicles</option><option>Other</option></select></div>
+          <div class="form-group"><label>Quantity</label><input id="r-qty" type="number" placeholder="100"/></div>
+          <div class="form-group"><label>Unit</label><input id="r-unit" placeholder="kg / liters / units"/></div>
+          <div class="form-group"><label>Disaster</label><select id="r-disaster"></select></div>
+          <div class="form-group"><label>Camp</label><select id="r-camp"><option value="">Unassigned</option></select></div>
+          <div class="form-group"><label>Supplier</label><input id="r-supplier" placeholder="Supplier Name"/></div>
+          <div class="form-group"><label>Status</label><select id="r-status"><option>Available</option><option>In Transit</option><option>Deployed</option><option>Exhausted</option></select></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="addResource()">Add Resource</button>
+      </div>
+      <div class="card"><h3>📦 Resource Inventory</h3><div class="table-wrap"><table id="t-resources"><thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Quantity</th><th>Unit</th><th>Disaster</th><th>Camp</th><th>Supplier</th><th>Status</th><th>Del</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- DONATIONS -->
+    <div class="panel" id="panel-donations">
+      <div class="panel-header"><h2>Donation Tracking</h2><p>Record and manage monetary and in-kind donations</p></div>
+      <div class="card">
+        <h3>➕ Record Donation</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Donor Name</label><input id="dn-name" placeholder="Donor Name / Anonymous"/></div>
+          <div class="form-group"><label>Donor Type</label><select id="dn-type"><option>Individual</option><option>Corporate</option><option>NGO</option><option>Government</option><option>Anonymous</option></select></div>
+          <div class="form-group"><label>Amount (₹)</label><input id="dn-amount" type="number" placeholder="5000"/></div>
+          <div class="form-group"><label>Donation Type</label><select id="dn-dtype"><option>Cash</option><option>In-Kind</option><option>Online Transfer</option><option>Cheque</option></select></div>
+          <div class="form-group"><label>Disaster</label><select id="dn-disaster"></select></div>
+          <div class="form-group"><label>Date</label><input id="dn-date" type="date"/></div>
+          <div class="form-group"><label>Contact</label><input id="dn-contact" placeholder="Email / Phone"/></div>
+          <div class="form-group"><label>Status</label><select id="dn-status"><option>Received</option><option>Pending</option><option>Allocated</option></select></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="addDonation()">Record Donation</button>
+      </div>
+      <div class="card"><h3>💰 Donation Ledger</h3>
+        <div style="display:flex;gap:1rem;margin-bottom:1rem;align-items:center">
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.6rem 1.2rem;font-family:'Bebas Neue';font-size:1.3rem;">Total: ₹<span id="total-donations">0</span></div>
+        </div>
+        <div class="table-wrap"><table id="t-donations"><thead><tr><th>ID</th><th>Donor</th><th>Type</th><th>Amount</th><th>Kind</th><th>Disaster</th><th>Date</th><th>Status</th><th>Del</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- SCHEMA -->
+    <div class="panel" id="panel-schema">
+      <div class="panel-header"><h2>Database Schema</h2><p>Entity-Relationship structure with all tables and attributes</p></div>
+      <div class="schema-grid" id="schema-grid"></div>
+    </div>
+
+    <!-- SQL TERMINAL -->
+    <div class="panel" id="panel-sql">
+      <div class="panel-header"><h2>SQL Terminal</h2><p>Execute raw SQL queries on the in-browser database</p></div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <button class="btn btn-secondary btn-sm" onclick="setSql('SELECT * FROM Disasters;')">All Disasters</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql('SELECT * FROM Users;')">All Users</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql('SELECT * FROM Relief_Camps;')">All Camps</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql('SELECT * FROM Victims;')">All Victims</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql('SELECT * FROM Resources;')">All Resources</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql('SELECT * FROM Donations;')">All Donations</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql(`SELECT d.name as disaster, COUNT(v.victim_id) as victim_count\nFROM Disasters d LEFT JOIN Victims v ON d.disaster_id=v.disaster_id\nGROUP BY d.disaster_id;`)">Victims/Disaster</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql(`SELECT d.name, SUM(dn.amount) as total\nFROM Donations dn JOIN Disasters d ON dn.disaster_id=d.disaster_id\nGROUP BY d.disaster_id;`)">Funds/Disaster</button>
+        <button class="btn btn-secondary btn-sm" onclick="setSql(`SELECT rc.camp_name, rc.capacity, rc.current_occupancy,\n(rc.capacity-rc.current_occupancy) as available\nFROM Relief_Camps rc WHERE rc.status='Active';`)">Camp Availability</button>
+      </div>
+      <div class="sql-term">
+        <div class="sql-term-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span>reliefnet.db — SQLite (in-memory)</span>
+        </div>
+        <textarea class="sql-input" id="sql-input" placeholder="-- Type SQL here…&#10;SELECT * FROM Disasters;"></textarea>
+        <div style="background:var(--bg3);padding:.5rem 1rem;display:flex;gap:.5rem;border-bottom:1px solid var(--border);">
+          <button class="btn btn-primary btn-sm" onclick="runSql()">▶ Run Query</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sql-output').innerHTML=''">Clear Output</button>
+        </div>
+        <div class="sql-output" id="sql-output"><span style="color:var(--muted);font-size:.75rem">-- Query results appear here</span></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script>
+let db;
+
+async function initDB(){
+  const SQL = await initSqlJs({ locateFile: f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` });
+  db = new SQL.Database();
+  db.run(`
+    CREATE TABLE IF NOT EXISTS Users (
+      user_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name   TEXT NOT NULL,
+      email       TEXT UNIQUE NOT NULL,
+      phone       TEXT,
+      role        TEXT NOT NULL DEFAULT 'Volunteer',
+      organization TEXT,
+      status      TEXT DEFAULT 'Active',
+      created_at  TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS Disasters (
+      disaster_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      type         TEXT NOT NULL,
+      location     TEXT NOT NULL,
+      severity     TEXT NOT NULL DEFAULT 'Medium',
+      start_date   TEXT,
+      status       TEXT DEFAULT 'Active',
+      description  TEXT,
+      created_at   TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS Relief_Camps (
+      camp_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      camp_name        TEXT NOT NULL,
+      disaster_id      INTEGER REFERENCES Disasters(disaster_id),
+      location         TEXT NOT NULL,
+      capacity         INTEGER NOT NULL DEFAULT 0,
+      current_occupancy INTEGER DEFAULT 0,
+      camp_manager     TEXT,
+      contact          TEXT,
+      status           TEXT DEFAULT 'Active',
+      created_at       TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS Victims (
+      victim_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name   TEXT NOT NULL,
+      age         INTEGER,
+      gender      TEXT,
+      contact     TEXT,
+      disaster_id INTEGER REFERENCES Disasters(disaster_id),
+      camp_id     INTEGER REFERENCES Relief_Camps(camp_id),
+      medical_condition TEXT DEFAULT 'None',
+      status      TEXT DEFAULT 'Found',
+      registered_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS Donations (
+      donation_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+      donor_name   TEXT NOT NULL,
+      donor_type   TEXT DEFAULT 'Individual',
+      amount       REAL DEFAULT 0,
+      donation_type TEXT DEFAULT 'Cash',
+      disaster_id  INTEGER REFERENCES Disasters(disaster_id),
+      donation_date TEXT,
+      contact      TEXT,
+      status       TEXT DEFAULT 'Received',
+      created_at   TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS Resources (
+      resource_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      category     TEXT NOT NULL,
+      quantity     REAL DEFAULT 0,
+      unit         TEXT,
+      disaster_id  INTEGER REFERENCES Disasters(disaster_id),
+      camp_id      INTEGER REFERENCES Relief_Camps(camp_id),
+      supplier     TEXT,
+      status       TEXT DEFAULT 'Available',
+      added_at     TEXT DEFAULT (datetime('now'))
+    );
+  `);
+  seedData();
+  refreshAll();
+}
+
+function seedData(){
+  db.run(`INSERT INTO Disasters(name,type,location,severity,start_date,status,description) VALUES
+    ('Kerala Monsoon Floods','Flood','Wayanad, Kerala','Critical','2025-07-14','Active','Severe flooding affecting 200k+ residents'),
+    ('Odisha Cyclone Remal','Cyclone','Puri, Odisha','High','2025-05-26','Contained','Cyclone causing coastal damage'),
+    ('Uttarakhand Landslide','Landslide','Chamoli, Uttarakhand','Medium','2025-06-02','Resolved','Highway blocked, villages isolated');`);
+  db.run(`INSERT INTO Relief_Camps(camp_name,disaster_id,location,capacity,current_occupancy,camp_manager,contact,status) VALUES
+    ('Camp Alpha',1,'Kalpetta Stadium, Wayanad',800,620,'Ravi Kumar','+91 9876543210','Active'),
+    ('Camp Beta',1,'Mananthavady School',400,390,'Priya Nair','+91 9876543211','Full'),
+    ('Camp Gamma',2,'Puri Beach Resort Area',600,180,'Suresh Panda','+91 9876543212','Active');`);
+  db.run(`INSERT INTO Users(full_name,email,phone,role,organization,status) VALUES
+    ('Arjun Sharma','arjun@ndrf.gov.in','+91 9000000001','Coordinator','NDRF','Active'),
+    ('Meena Pillai','meena@redcross.org','+91 9000000002','Medical Staff','Red Cross','On Field'),
+    ('Rajesh Nair','rajesh@reliefnet.org','+91 9000000003','Logistics','ReliefNet','Active'),
+    ('Sonal Gupta','sonal@ndma.gov.in','+91 9000000004','Admin','NDMA','Active');`);
+  db.run(`INSERT INTO Victims(full_name,age,gender,contact,disaster_id,camp_id,medical_condition,status) VALUES
+    ('Ramesh Kumar',45,'Male','+91 9111111111',1,1,'Minor Injuries','In Shelter'),
+    ('Lakshmi Devi',38,'Female','+91 9111111112',1,1,'None','In Shelter'),
+    ('Hari Prasad',60,'Male',null,1,null,'Critical','Hospitalized'),
+    ('Anjali Singh',25,'Female','+91 9111111113',2,3,'None','In Shelter');`);
+  db.run(`INSERT INTO Donations(donor_name,donor_type,amount,donation_type,disaster_id,donation_date,status) VALUES
+    ('TCS Foundation','Corporate',500000,'Online Transfer',1,'2025-07-15','Allocated'),
+    ('Ratan Mehta','Individual',25000,'Cash',1,'2025-07-16','Received'),
+    ('Anonymous','Anonymous',10000,'Online Transfer',2,'2025-05-27','Received'),
+    ('State Govt Odisha','Government',1000000,'Cheque',2,'2025-05-28','Allocated');`);
+  db.run(`INSERT INTO Resources(name,category,quantity,unit,disaster_id,camp_id,supplier,status) VALUES
+    ('Rice Bags','Food',2000,'kg',1,1,'FCI Warehouse','Available'),
+    ('Drinking Water','Water',5000,'liters',1,1,'Bisleri Ltd','Deployed'),
+    ('First Aid Kits','Medicine',300,'units',1,2,'Apollo Pharmacy','Available'),
+    ('Tarpaulins','Shelter',500,'sheets',2,3,'District Supply','Deployed'),
+    ('Rescue Boats','Equipment',12,'units',1,null,'SDRF','In Transit');`);
+}
+
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='dashboard') renderDashboard();
+}
+
+function q(sql,params=[]){ try{ return db.exec(sql,params); }catch(e){ return [{error:e.message}]; } }
+function val(id){ return document.getElementById(id).value.trim(); }
+function toast(msg,err=false){
+  const t=document.getElementById('toast'); t.textContent=msg; t.className='toast'+(err?' err':'');
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500);
+}
+function badge(text){
+  const map={Active:'green',Critical:'red',High:'red',Medium:'yellow',Low:'blue',Resolved:'blue',Contained:'orange',Full:'red','In Shelter':'green',Hospitalized:'red',Missing:'red',Found:'yellow',Available:'green','In Transit':'yellow',Deployed:'blue',Exhausted:'red',Received:'green',Allocated:'blue',Pending:'yellow'};
+  const cls=map[text]||'blue';
+  return `<span class="badge badge-${cls}">${text}</span>`;
+}
+function sev(text){
+  const map={Critical:'red',High:'orange',Medium:'yellow',Low:'blue'};
+  return `<span class="badge badge-${map[text]||'blue'}">${text}</span>`;
+}
+
+function fillSelect(id, rows, valKey, labelKey){
+  const el=document.getElementById(id); if(!el)return;
+  const cur=el.value;
+  el.innerHTML = id.includes('camp')||id.includes('v-camp')||id.includes('r-camp') ? '<option value="">None</option>' : '';
+  (rows||[]).forEach(r=>{ const o=document.createElement('option'); o.value=r[valKey]; o.textContent=r[labelKey]; el.appendChild(o); });
+  el.value=cur;
+}
+function refreshSelects(){
+  const dis=q('SELECT disaster_id,name FROM Disasters');
+  const camps=q('SELECT camp_id,camp_name FROM Relief_Camps');
+  const drows=dis[0]?dis[0].values.map(r=>({disaster_id:r[0],name:r[1]})):[];
+  const crows=camps[0]?camps[0].values.map(r=>({camp_id:r[0],camp_name:r[1]})):[];
+  ['c-disaster','v-disaster','r-disaster','dn-disaster'].forEach(id=>fillSelect(id,drows,'disaster_id','name'));
+  ['v-camp','r-camp'].forEach(id=>fillSelect(id,crows,'camp_id','camp_name'));
+}
+
+function addDisaster(){
+  const n=val('d-name'),t=val('d-type'),l=val('d-loc'),s=val('d-sev'),dt=val('d-date'),st=val('d-status'),desc=val('d-desc');
+  if(!n||!l){toast('Name & Location required',true);return;}
+  db.run('INSERT INTO Disasters(name,type,location,severity,start_date,status,description) VALUES(?,?,?,?,?,?,?)',[n,t,l,s,dt||null,st,desc]);
+  toast('✓ Disaster registered'); refreshAll();
+  ['d-name','d-loc','d-date','d-desc'].forEach(i=>document.getElementById(i).value='');
+}
+function delDisaster(id){ db.run('DELETE FROM Disasters WHERE disaster_id=?',[id]); toast('Deleted'); refreshAll(); }
+
+function addCamp(){
+  const n=val('c-name'),did=val('c-disaster'),l=val('c-loc'),cap=val('c-cap'),occ=val('c-occ'),mgr=val('c-mgr'),con=val('c-contact'),st=val('c-status');
+  if(!n||!l||!cap){toast('Name, Location & Capacity required',true);return;}
+  db.run('INSERT INTO Relief_Camps(camp_name,disaster_id,location,capacity,current_occupancy,camp_manager,contact,status) VALUES(?,?,?,?,?,?,?,?)',[n,did||null,l,+cap,+occ||0,mgr,con,st]);
+  toast('✓ Camp added'); refreshAll();
+  ['c-name','c-loc','c-cap','c-occ','c-mgr','c-contact'].forEach(i=>document.getElementById(i).value='');
+}
+function delCamp(id){ db.run('DELETE FROM Relief_Camps WHERE camp_id=?',[id]); toast('Deleted'); refreshAll(); }
+
+function addVictim(){
+  const n=val('v-name'),age=val('v-age'),g=val('v-gender'),con=val('v-contact'),did=val('v-disaster'),cid=val('v-camp'),med=val('v-medical'),st=val('v-status');
+  if(!n){toast('Name required',true);return;}
+  db.run('INSERT INTO Victims(full_name,age,gender,contact,disaster_id,camp_id,medical_condition,status) VALUES(?,?,?,?,?,?,?,?)',[n,age||null,g,con,did||null,cid||null,med,st]);
+  toast('✓ Victim registered'); refreshAll();
+  ['v-name','v-age','v-contact'].forEach(i=>document.getElementById(i).value='');
+}
+function delVictim(id){ db.run('DELETE FROM Victims WHERE victim_id=?',[id]); toast('Deleted'); refreshAll(); }
+
+function addUser(){
+  const n=val('u-name'),e=val('u-email'),p=val('u-phone'),r=val('u-role'),o=val('u-org'),s=val('u-status');
+  if(!n||!e){toast('Name & Email required',true);return;}
+  try{ db.run('INSERT INTO Users(full_name,email,phone,role,organization,status) VALUES(?,?,?,?,?,?)',[n,e,p,r,o,s]); toast('✓ User added'); refreshAll(); ['u-name','u-email','u-phone','u-org'].forEach(i=>document.getElementById(i).value=''); }
+  catch(err){ toast('Email already exists',true); }
+}
+function delUser(id){ db.run('DELETE FROM Users WHERE user_id=?',[id]); toast('Deleted'); refreshAll(); }
+
+function addResource(){
+  const n=val('r-name'),cat=val('r-cat'),qty=val('r-qty'),unit=val('r-unit'),did=val('r-disaster'),cid=val('r-camp'),sup=val('r-supplier'),st=val('r-status');
+  if(!n||!qty){toast('Name & Quantity required',true);return;}
+  db.run('INSERT INTO Resources(name,category,quantity,unit,disaster_id,camp_id,supplier,status) VALUES(?,?,?,?,?,?,?,?)',[n,cat,+qty,unit,did||null,cid||null,sup,st]);
+  toast('✓ Resource added'); refreshAll();
+  ['r-name','r-qty','r-unit','r-supplier'].forEach(i=>document.getElementById(i).value='');
+}
+function delResource(id){ db.run('DELETE FROM Resources WHERE resource_id=?',[id]); toast('Deleted'); refreshAll(); }
+
+function addDonation(){
+  const dn=val('dn-name'),dt=val('dn-type'),amt=val('dn-amount'),dtype=val('dn-dtype'),did=val('dn-disaster'),date=val('dn-date'),con=val('dn-contact'),st=val('dn-status');
+  if(!dn||!amt){toast('Donor name & amount required',true);return;}
+  db.run('INSERT INTO Donations(donor_name,donor_type,amount,donation_type,disaster_id,donation_date,contact,status) VALUES(?,?,?,?,?,?,?,?)',[dn,dt,+amt,dtype,did||null,date||null,con,st]);
+  toast('✓ Donation recorded'); refreshAll();
+  ['dn-name','dn-amount','dn-date','dn-contact'].forEach(i=>document.getElementById(i).value='');
+}
+function delDonation(id){ db.run('DELETE FROM Donations WHERE donation_id=?',[id]); toast('Deleted'); refreshAll(); }
+
+function renderTable(tableId, rows, cols, renderRow){
+  const tbody=document.querySelector('#'+tableId+' tbody'); if(!tbody)return;
+  tbody.innerHTML = rows.length===0 ? `<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:2rem">No records found</td></tr>` : rows.map(renderRow).join('');
+}
+
+function refreshDisasters(){
+  const r=q('SELECT * FROM Disasters ORDER BY disaster_id DESC');
+  const rows=r[0]?r[0].values:[];
+  renderTable('t-disasters',rows,8,r=>`<tr>
+    <td><span style="font-family:JetBrains Mono;font-size:.75rem;color:var(--muted)">#${r[0]}</span></td>
+    <td><strong>${r[1]}</strong></td><td>${r[2]}</td><td>${r[3]}</td>
+    <td>${sev(r[4])}</td><td style="font-family:JetBrains Mono;font-size:.75rem">${r[5]||'—'}</td>
+    <td>${badge(r[6])}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delDisaster(${r[0]})">✕</button></td>
+  </tr>`);
+}
+function refreshCamps(){
+  const r=q('SELECT rc.*,d.name FROM Relief_Camps rc LEFT JOIN Disasters d ON rc.disaster_id=d.disaster_id ORDER BY rc.camp_id DESC');
+  const rows=r[0]?r[0].values:[];
+  renderTable('t-camps',rows,9,r=>`<tr>
+    <td><span style="font-family:JetBrains Mono;font-size:.75rem;color:var(--muted)">#${r[0]}</span></td>
+    <td><strong>${r[1]}</strong></td><td>${r[10]||'—'}</td><td>${r[3]}</td>
+    <td>${r[4]}</td><td><span style="color:${r[5]/r[4]>.9?'var(--red)':r[5]/r[4]>.6?'var(--yellow)':'var(--green)'}">${r[5]}</span></td>
+    <td>${r[6]||'—'}</td><td>${badge(r[9])}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delCamp(${r[0]})">✕</button></td>
+  </tr>`);
+}
+function refreshVictims(){
+  const r=q('SELECT v.*,d.name,rc.camp_name FROM Victims v LEFT JOIN Disasters d ON v.disaster_id=d.disaster_id LEFT JOIN Relief_Camps rc ON v.camp_id=rc.camp_id ORDER BY v.victim_id DESC');
+  const rows=r[0]?r[0].values:[];
+  renderTable('t-victims',rows,9,r=>`<tr>
+    <td><span style="font-family:JetBrains Mono;font-size:.75rem;color:var(--muted)">#${r[0]}</span></td>
+    <td><strong>${r[1]}</strong></td><td>${r[2]||'—'}</td><td>${r[3]||'—'}</td>
+    <td>${r[10]||'—'}</td><td>${r[11]||'—'}</td>
+    <td>${badge(r[7])}</td><td>${badge(r[8])}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delVictim(${r[0]})">✕</button></td>
+  </tr>`);
+}
+function refreshUsers(){
+  const r=q('SELECT * FROM Users ORDER BY user_id DESC');
+  const rows=r[0]?r[0].values:[];
+  renderTable('t-users',rows,8,r=>`<tr>
+    <td><span style="font-family:JetBrains Mono;font-size:.75rem;color:var(--muted)">#${r[0]}</span></td>
+    <td><strong>${r[1]}</strong></td><td style="font-size:.8rem">${r[2]}</td><td>${r[3]||'—'}</td>
+    <td>${badge(r[4])}</td><td>${r[5]||'—'}</td><td>${badge(r[6])}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delUser(${r[0]})">✕</button></td>
+  </tr>`);
+}
+function refreshResources(){
+  const r=q('SELECT res.*,d.name,rc.camp_name FROM Resources res LEFT JOIN Disasters d ON res.disaster_id=d.disaster_id LEFT JOIN Relief_Camps rc ON res.camp_id=rc.camp_id ORDER BY res.resource_id DESC');
+  const rows=r[0]?r[0].values:[];
+  renderTable('t-resources',rows,10,r=>`<tr>
+    <td><span style="font-family:JetBrains Mono;font-size:.75rem;color:var(--muted)">#${r[0]}</span></td>
+    <td><strong>${r[1]}</strong></td><td>${badge(r[2])}</td>
+    <td style="font-family:JetBrains Mono">${r[3]}</td><td>${r[4]||'—'}</td>
+    <td>${r[10]||'—'}</td><td>${r[11]||'—'}</td><td>${r[7]||'—'}</td>
+    <td>${badge(r[8])}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delResource(${r[0]})">✕</button></td>
+  </tr>`);
+}
+function refreshDonations(){
+  const r=q('SELECT dn.*,d.name FROM Donations dn LEFT JOIN Disasters d ON dn.disaster_id=d.disaster_id ORDER BY dn.donation_id DESC');
+  const rows=r[0]?r[0].values:[];
+  renderTable('t-donations',rows,9,r=>`<tr>
+    <td><span style="font-family:JetBrains Mono;font-size:.75rem;color:var(--muted)">#${r[0]}</span></td>
+    <td><strong>${r[1]}</strong></td><td>${r[2]}</td>
+    <td style="font-family:JetBrains Mono;color:var(--green)">₹${Number(r[3]).toLocaleString('en-IN')}</td>
+    <td>${r[4]}</td><td>${r[10]||'—'}</td>
+    <td style="font-family:JetBrains Mono;font-size:.75rem">${r[6]||'—'}</td>
+    <td>${badge(r[8])}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delDonation(${r[0]})">✕</button></td>
+  </tr>`);
+  const tot=q('SELECT SUM(amount) FROM Donations');
+  document.getElementById('total-donations').textContent=Number(tot[0]?.values[0][0]||0).toLocaleString('en-IN');
+}
+
+function renderDashboard(){
+  const stats=[
+    {label:'Active Disasters', val: q('SELECT COUNT(*) FROM Disasters WHERE status="Active"')[0]?.values[0][0]||0, cls:'red'},
+    {label:'Total Victims',    val: q('SELECT COUNT(*) FROM Victims')[0]?.values[0][0]||0, cls:'orange'},
+    {label:'Relief Camps',     val: q('SELECT COUNT(*) FROM Relief_Camps WHERE status!="Inactive"')[0]?.values[0][0]||0, cls:'blue'},
+    {label:'Volunteers',       val: q('SELECT COUNT(*) FROM Users WHERE status!="Inactive"')[0]?.values[0][0]||0, cls:'green'},
+    {label:'Resources',        val: q('SELECT COUNT(*) FROM Resources')[0]?.values[0][0]||0, cls:'yellow'},
+    {label:'Donations (₹)',    val:'₹'+Number(q('SELECT SUM(amount) FROM Donations')[0]?.values[0][0]||0).toLocaleString('en-IN'), cls:'green'},
+  ];
+  document.getElementById('stats-grid').innerHTML=stats.map(s=>`<div class="stat-card ${s.cls}"><div class="s-val">${s.val}</div><div class="s-label">${s.label}</div></div>`).join('');
+
+  const dis=q('SELECT name,type,severity,status FROM Disasters WHERE status="Active" LIMIT 5');
+  const drows=dis[0]?dis[0].values:[];
+  document.getElementById('dash-disasters').innerHTML=drows.length===0?'<p style="color:var(--muted);font-size:.875rem">No active disasters</p>':
+    drows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)"><div><div style="font-weight:600;font-size:.875rem">${r[0]}</div><div style="font-size:.75rem;color:var(--muted)">${r[1]}</div></div><div style="display:flex;gap:.4rem">${sev(r[2])}${badge(r[3])}</div></div>`).join('');
+
+  const feed=[
+    {type:'critical',title:'Flood levels rising in Wayanad — evacuation in progress',time:'2 min ago'},
+    {type:'info',   title:'Camp Beta reaching full capacity — rerouting incoming',time:'15 min ago'},
+    {type:'warning',title:'Medical supplies running low at Camp Alpha',time:'1 hr ago'},
+    {type:'info',   title:'500 food packets dispatched from FCI depot',time:'3 hrs ago'},
+    {type:'info',   title:'TCS Foundation donation of ₹5L allocated to flood relief',time:'6 hrs ago'},
+  ];
+  document.getElementById('alert-feed').innerHTML=feed.map(f=>`<div class="alert-item ${f.type}"><div class="alert-meta"><div class="alert-title">${f.title}</div><div class="alert-time">${f.time}</div></div></div>`).join('');
+
+  const dots=document.getElementById('map-dots');
+  dots.innerHTML='';
+  [{x:28,y:55,c:'var(--red)'},{x:65,y:40,c:'var(--orange)'},{x:45,y:30,c:'var(--yellow)'}].forEach(d=>{
+    const el=document.createElement('div');
+    el.className='map-dot';
+    el.style.cssText=`left:${d.x}%;top:${d.y}%;background:${d.c};animation-delay:${Math.random()*1.5}s`;
+    dots.appendChild(el);
+  });
+}
+
+function renderSchema(){
+  const schema=[
+    {name:'Users',color:'var(--blue)',cols:[
+      {n:'user_id',t:'INTEGER',pk:true},{n:'full_name',t:'TEXT',nn:true},{n:'email',t:'TEXT UNIQUE',nn:true},
+      {n:'phone',t:'TEXT'},{n:'role',t:'TEXT',nn:true},{n:'organization',t:'TEXT'},{n:'status',t:'TEXT'},{n:'created_at',t:'DATETIME'},
+    ]},
+    {name:'Disasters',color:'var(--red)',cols:[
+      {n:'disaster_id',t:'INTEGER',pk:true},{n:'name',t:'TEXT',nn:true},{n:'type',t:'TEXT',nn:true},
+      {n:'location',t:'TEXT',nn:true},{n:'severity',t:'TEXT',nn:true},{n:'start_date',t:'DATE'},{n:'status',t:'TEXT'},{n:'description',t:'TEXT'},{n:'created_at',t:'DATETIME'},
+    ]},
+    {name:'Relief_Camps',color:'var(--orange)',cols:[
+      {n:'camp_id',t:'INTEGER',pk:true},{n:'camp_name',t:'TEXT',nn:true},{n:'disaster_id',t:'INTEGER',fk:'Disasters'},
+      {n:'location',t:'TEXT',nn:true},{n:'capacity',t:'INTEGER',nn:true},{n:'current_occupancy',t:'INTEGER'},
+      {n:'camp_manager',t:'TEXT'},{n:'contact',t:'TEXT'},{n:'status',t:'TEXT'},{n:'created_at',t:'DATETIME'},
+    ]},
+    {name:'Victims',color:'var(--yellow)',cols:[
+      {n:'victim_id',t:'INTEGER',pk:true},{n:'full_name',t:'TEXT',nn:true},{n:'age',t:'INTEGER'},{n:'gender',t:'TEXT'},
+      {n:'contact',t:'TEXT'},{n:'disaster_id',t:'INTEGER',fk:'Disasters'},{n:'camp_id',t:'INTEGER',fk:'Relief_Camps'},
+      {n:'medical_condition',t:'TEXT'},{n:'status',t:'TEXT'},{n:'registered_at',t:'DATETIME'},
+    ]},
+    {name:'Donations',color:'var(--green)',cols:[
+      {n:'donation_id',t:'INTEGER',pk:true},{n:'donor_name',t:'TEXT',nn:true},{n:'donor_type',t:'TEXT'},
+      {n:'amount',t:'REAL'},{n:'donation_type',t:'TEXT'},{n:'disaster_id',t:'INTEGER',fk:'Disasters'},
+      {n:'donation_date',t:'DATE'},{n:'contact',t:'TEXT'},{n:'status',t:'TEXT'},{n:'created_at',t:'DATETIME'},
+    ]},
+    {name:'Resources',color:'var(--orange)',cols:[
+      {n:'resource_id',t:'INTEGER',pk:true},{n:'name',t:'TEXT',nn:true},{n:'category',t:'TEXT',nn:true},
+      {n:'quantity',t:'REAL'},{n:'unit',t:'TEXT'},{n:'disaster_id',t:'INTEGER',fk:'Disasters'},
+      {n:'camp_id',t:'INTEGER',fk:'Relief_Camps'},{n:'supplier',t:'TEXT'},{n:'status',t:'TEXT'},{n:'added_at',t:'DATETIME'},
+    ]},
+  ];
+  document.getElementById('schema-grid').innerHTML=schema.map(t=>`
+    <div class="schema-table">
+      <div class="schema-table-header" style="border-left:3px solid ${t.color}">
+        <span style="font-size:1rem">🗃</span>
+        <span class="t-name">${t.name}</span>
+        <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${t.cols.length} cols</span>
+      </div>
+      ${t.cols.map(c=>`<div class="schema-col">
+        <span class="col-name">${c.n}</span>
+        <span class="col-type">${c.t}</span>
+        ${c.pk?'<span class="col-pk">PK</span>':''}
+        ${c.fk?`<span class="col-fk">FK→${c.fk}</span>`:''}
+        ${c.nn&&!c.pk?'<span class="col-nn">NN</span>':''}
+      </div>`).join('')}
+    </div>`).join('');
+}
+
+function runSql(){
+  const sql=document.getElementById('sql-input').value.trim();
+  if(!sql)return;
+  const out=document.getElementById('sql-output');
+  try{
+    const res=db.exec(sql);
+    if(res.length===0){ out.innerHTML='<span class="ok">✓ Query executed successfully. Rows affected.</span>'; refreshAll(); return; }
+    let html='';
+    res.forEach(r=>{
+      html+='<table><thead><tr>'+r.columns.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+      r.values.forEach(row=>{ html+='<tr>'+row.map(v=>`<td>${v===null?'<span style="color:var(--muted)">NULL</span>':v}</td>`).join('')+'</tr>'; });
+      html+=`</tbody></table><div style="color:var(--muted);font-size:.7rem;margin-top:.5rem">${r.values.length} row(s) returned</div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<span class="err">✗ Error: ${e.message}</span>`; }
+}
+function setSql(s){ document.getElementById('sql-input').value=s; show('sql'); }
+
+function refreshAll(){
+  refreshSelects();
+  refreshDisasters(); refreshCamps(); refreshVictims();
+  refreshUsers(); refreshResources(); refreshDonations();
+  renderSchema();
+}
+
+function tick(){ document.getElementById('clock').textContent=new Date().toLocaleTimeString(); }
+setInterval(tick,1000); tick();
+
+document.addEventListener('keydown',e=>{ if(e.ctrlKey&&e.key==='Enter'&&document.getElementById('sql-input')===document.activeElement) runSql(); });
+
+initDB().then(()=>{ renderDashboard(); toast('✓ ReliefNet DB initialized'); });
+</script>
+</body>
+</html>
+
+
+
+can u give me separate html, css and js code from this code pls 
